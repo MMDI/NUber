@@ -1,0 +1,9 @@
+# DEPENDENCIES
+node_modules/
+
+# ENVIRONMENT CONFIGURATION
+.env
+
+# IDE GENERATED FILES
+*.iml
+*.xml
