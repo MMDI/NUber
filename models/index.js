@@ -1,9 +1,9 @@
-// index.js
+/* index.js*/
 const mongoose = require('mongoose');
 
 exports = module.exports = {};
 
-// Schemas
+/* Schemas*/
 const driverSchema = new mongoose.Schema({
     available: Boolean,
     location: {
@@ -45,7 +45,7 @@ const tripSchema = new mongoose.Schema({
     directionsToDropOff: Object
 }, { collection : 'trips' });
 
-// Models
+/* Models*/
 exports.driverModel = mongoose.model('driver', driverSchema);
 exports.riderModel = mongoose.model('rider', riderSchema);
 exports.tripModel = mongoose.model('trip', tripSchema);

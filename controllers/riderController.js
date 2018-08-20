@@ -1,56 +1,55 @@
-// riderController.js
+/* riderController.js*/
 const { riderModel, driverModel, tripModel } = require('../models');
-const { getDirections, getSteps } = require('../utils/tools');
+const { getDistance, getMiles, getDirections, getSteps } = require('../utils/tools');
 
 exports = module.exports = {};
 
-/*
-// CREATES A NEW RIDER
-router.post('/', function (req, res) {
-    Rider.create({
-            location: req.body.location
-        },
-        function (err, rider) {
-            if (err) return res.status(500).send("There was a problem adding the information to the database.");
-            res.status(200).send(rider);
-        });
-});
+/* Searches for drivers within a default or passed radius*/
+exports.searchDrivers = async (req, res) => {
+    try {
+        let availableDriver = await driverModel.find({available: true});
+        const searchRadius = req.query.searchRadius || 10;
 
-// RETURNS ALL THE RIDERS IN THE DATABASE
-router.get('/', function (req, res) {
-    Rider.find({}, function (err, riders) {
-        if (err) return res.status(500).send("There was a problem finding the riders.");
-        res.status(200).send(riders);
-    });
-});
+        if (!req.rider.location.latitude || !req.rider.location.longitude)
+            throw 'Error: Bad location!';
 
-// UPDATES A SINGLE RIDER IN THE DATABASE
-router.put('/:id', function (req, res) {
+        const driverDistance = await getDistance(
+            availableDriver.filter(driver => driver.location.latitude && driver.location.longitude).map(driver => driver.location),
+            req.rider.location
+        );
 
-    Rider.findByIdAndUpdate(req.params.id, req.body, {new: true}, function (err, rider) {
-        if (err) return res.status(500).send("There was a problem updating the rider.");
-        res.status(200).send(rider);
-    });
-});
+        const driverInfo = availableDriver.filter(driver => driver.location.latitude && driver.location.longitude)
+            .map((driver, index) => {
+                return {
+                    ...JSON.parse(JSON.stringify(driver)),
+                    distance: String(driverDistance.rows[index].elements[0].distance.text),
+                    timeToPickup: String(driverDistance.rows[index].elements[0].duration.text)
+                };
+            });
+        availableDriver = driverInfo.filter(driver => parseFloat(getMiles(driver.distance)) <= searchRadius);
+        res.send(availableDriver);
+    } catch (err) {
+        if(err.message === 'Error: Bad location!') {
+            console.error(err.message || err);
+            res.sendStatus(422);
+        } else {
+            console.error(err.message || err);
+            res.sendStatus(500);
+        }
+    }
+}
 
-// DELETES A RIDER FROM THE DATABASE
-router.delete('/:id', function (req, res) {
-    Rider.findByIdAndRemove(req.params.id, function (err, rider) {
-        if (err) return res.status(500).send("There was a problem deleting the rider.");
-        res.status(200).send("Rider was deleted.");
-    });
-});
-*/
-
-// scheduleTrip
+/* Schedules a trip*/
 exports.scheduleTrip = async (req, res) => {
     const assignedDriver = await driverModel.findById(req.body.driverID);
 
     const tripDirections = await getDirections(
-        assignedDriver.location, req.rider.location, req.body.dropoff
+        assignedDriver.location,
+        req.rider.location,
+        req.body.dropOffLocation
     );
 
-    const tripSchedule = new tripModel({
+    const newTrip = new tripModel({
         riderID: req.rider._id,
         driverID: assignedDriver._id,
         driverLocation: {
@@ -65,8 +64,8 @@ exports.scheduleTrip = async (req, res) => {
         },
         dropOffLocation: {
             address: tripDirections.routes[0].legs[1].end_address,
-            latitude: req.body.dropoff.latitude,
-            longitude: req.body.dropoff.longitude
+            latitude: req.body.dropOffLocation.latitude,
+            longitude: req.body.dropOffLocation.longitude
         },
         distance: tripDirections.routes[0].legs[1].distance.text,
         timeToPickup: tripDirections.routes[0].legs[0].duration.text,
@@ -74,6 +73,45 @@ exports.scheduleTrip = async (req, res) => {
         directionsToPickup: getSteps(tripDirections.routes[0].legs[0].steps),
         directionsToDropOff: getSteps(tripDirections.routes[0].legs[1].steps)
     });
-    const tripRecord = await tripSchedule.save();
-    res.send(tripRecord);
+    const tripInfo = await newTrip.save();
+    driverModel.findByIdAndUpdate(
+        req.body.driverID,
+        { $set: {
+                available: false,
+                currentTrip: tripInfo._id
+            } },
+        { new: true }
+    );
+    res.send(tripInfo);
+}
+
+/* Adds a rider to the database*/
+exports.addRider = async (req, res) => {
+    try {
+        if (!req.body.latitude || !req.body.longitude)
+            throw 'Error: Bad location!';
+        const newRider = new riderModel({
+            location: {
+                latitude: req.body.latitude,
+                longitude: req.body.longitude
+            }
+        });
+        const riderInfo = await newRider.save();
+        console.log('New rider added!');
+        res.send(riderInfo);
+    } catch (err) {
+        if(err.message === 'Error: Bad location!') {
+            console.error(err.message || err);
+            res.sendStatus(422);
+        } else {
+            console.error(err.message || err);
+            res.sendStatus(500);
+        }
+    }
+}
+
+/* Removes a rider from the database*/
+exports.removeRider = async (req, res) => {
+    riderModel.findByIdAndRemove(req.params.riderID);
+    res.sendStatus(200);
 }
