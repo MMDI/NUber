@@ -78,7 +78,7 @@ exports.scheduleTrip = async (req, res) => {
         req.body.driverID,
         { $set: {
                 available: false,
-                currentTrip: tripInfo._id
+                assignment: tripInfo._id
             } },
         { new: true }
     );
@@ -112,6 +112,19 @@ exports.addRider = async (req, res) => {
 
 /* Removes a rider from the database*/
 exports.removeRider = async (req, res) => {
-    riderModel.findByIdAndRemove(req.params.riderID);
+    riderModel.findByIdAndRemove(req.params.riderID);   //check admin first?
     res.sendStatus(200);
+}
+
+/* riderID*/
+exports.riderID = async (req, res, next, riderID) => {
+    try {
+        const riderInfo = await riderModel.findById(riderID);
+        req.rider = riderInfo;
+        if (!riderInfo) throw 'Error: No rider!'
+    } catch (err) {
+        req.rider = null;
+        console.error(err.message || err);
+    }
+    return next();
 }
