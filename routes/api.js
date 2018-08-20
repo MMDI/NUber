@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 
 const {
+    driverID,
     setAvailability,
     viewAssignment,
     addDriver,
@@ -11,18 +12,16 @@ const {
 } = require('../controllers/driverController');
 
 const {
+    riderID,
     searchDrivers,
     scheduleTrip,
     addRider,
     removeRider
 } = require('../controllers/riderController');
 
-/*
 const {
-    // trip functions
-
+    tripID
 } = require('../controllers/tripController');
-*/
 
 router.use(bodyParser.json());
 router.use(bodyParser.urlencoded({ extended: true }));
@@ -44,12 +43,7 @@ router.get('/rider/:riderID/searchDrivers', searchDrivers);
 router.post('/rider', addRider);
 router.delete('/rider/:riderID', removeRider);
 
-/*
- Trip routes
-
-
- Bad route
-*/
+/* Bad route*/
 router.use('/', (req, res) => res.sendStatus(404));
 
 module.exports = router;

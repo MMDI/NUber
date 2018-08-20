@@ -10,6 +10,16 @@ exports.setAvailability = async (req, res) => {
             req.driver._id,
             { $set: { available: req.body.available } },
             { new: true }
+
+            /*Also tried this but neither actually changes the database value:
+            *
+            * req.params.driverID,
+            * req.body.available,
+            * { new: true }
+            *
+            * Both result in the following console message:
+            * (node:10644) DeprecationWarning: collection.find option [fields] is deprecated and will be removed in a later version.
+            * */
         );
         res.sendStatus(200);
     } catch (err) {
@@ -56,13 +66,14 @@ exports.addDriver = async (req, res) => {
         console.log('New driver added!');
         res.send(driverInfo);
     } catch (err) {
-        if(err.message === 'Error: Bad location!') {
+        if (err.message === 'Error: Bad location!') {
             console.error(err.message || err);
             res.sendStatus(422);
         } else {
             console.error(err.message || err);
             res.sendStatus(500);
         }
+    }
 }
 
 /* Removes a driver*/
